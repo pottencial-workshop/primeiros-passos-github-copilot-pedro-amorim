@@ -4,6 +4,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Função utilitária para escapar texto (protege contra injeção)
+  function escapeHtml(str) {
+    if (typeof str !== "string") return str;
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -13,6 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // Clear loading message
       activitiesList.innerHTML = "";
 
+      // Limpar opções do select, preservando o placeholder inicial
+      activitySelect.innerHTML = '<option value="">-- Selecione uma atividade --</option>';
+
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
@@ -20,11 +34,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Monta HTML da lista de participantes
+        let participantsHTML = `<div class="participants-section"><h5>Participantes <span class="participants-badge">(${details.participants.length})</span></h5><ul class="participants-list">`;
+        if (details.participants && details.participants.length > 0) {
+          details.participants.forEach((p) => {
+            participantsHTML += `<li>${escapeHtml(p)}</li>`;
+          });
+        } else {
+          participantsHTML += `<li class="empty">Nenhum participante ainda</li>`;
+        }
+        participantsHTML += `</ul></div>`;
+
         activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Agenda:</strong> ${details.schedule}</p>
+          <h4>${escapeHtml(name)}</h4>
+          <p>${escapeHtml(details.description)}</p>
+          <p><strong>Agenda:</strong> ${escapeHtml(details.schedule)}</p>
           <p><strong>Disponibilidade:</strong> ${spotsLeft} vagas disponíveis</p>
+          ${participantsHTML}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Recarrega atividades para refletir nova inscrição
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "Ocorreu um erro";
         messageDiv.className = "error";
